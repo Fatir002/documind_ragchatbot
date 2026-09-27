@@ -1,7 +1,7 @@
 """Try registration and login: python -m scripts.try_auth"""
 
-from app.exceptions import DocuMindError
 from app.auth import authenticate, register_user
+from app.exceptions import DocuMindError
 
 
 def main() -> None:
