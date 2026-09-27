@@ -65,7 +65,10 @@ def _load_pdf(filename: str, data: bytes) -> list[Document]:
         )
 
     documents = [
-        Document(page_content=text.strip(), metadata={"source": filename, "page": number})
+        Document(
+            page_content=text.replace("\x00", "").strip(),
+            metadata={"source": filename, "page": number},
+        )
         for number, text in pages
         if text.strip()
     ]
@@ -80,7 +83,8 @@ def _load_pdf(filename: str, data: bytes) -> list[Document]:
 def _load_text(filename: str, data: bytes) -> list[Document]:
     try:
         text = data.decode("utf-8-sig")  # also handles the BOM Windows Notepad adds
-        text = text.replace("\r\n", "\n").replace("\r", "\n")  # normalize Windows line endings
+        text = text.replace("\r\n", "\n").replace("\r", "\n")  # normalize line endings
+        text = text.replace("\x00", "")  # PostgreSQL text columns reject NUL bytes
     except UnicodeDecodeError as exc:
         raise DocumentProcessingError(
             "file is not valid UTF-8",
