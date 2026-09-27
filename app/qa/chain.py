@@ -7,12 +7,14 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
 
 from app.config import get_settings
-from app.exceptions import LLMServiceError
+from app.exceptions import InputValidationError, LLMServiceError
 from app.qa.history import ConversationHistory
 from app.retrieval.hybrid_search import hybrid_search
 from app.retrieval.vector_search import RetrievedChunk
 
 logger = logging.getLogger(__name__)
+
+MAX_QUESTION_LENGTH = 1000
 
 SYSTEM_PROMPT = """You are a helpful assistant named DocuMind that answers questions using \
 ONLY the provided context. Follow these rules strictly:
@@ -81,6 +83,14 @@ def _standalone_question(question: str, history: ConversationHistory, llm: ChatG
 
 def answer_question(question: str, history: ConversationHistory | None = None) -> Answer:
     """Retrieve relevant chunks and ask the LLM to answer using only them."""
+    if len(question) > MAX_QUESTION_LENGTH:
+        raise InputValidationError(
+            f"question too long: {len(question)} chars",
+            user_message=f"Please keep questions under {MAX_QUESTION_LENGTH} characters.",
+        )
+    if not question.strip():
+        raise InputValidationError("empty question", user_message="Please enter a question.")
+
     history = history or ConversationHistory()
     settings = get_settings()
     llm = ChatGroq(model=settings.groq_model, api_key=settings.groq_api_key, temperature=0)

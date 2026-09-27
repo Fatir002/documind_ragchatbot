@@ -1,5 +1,7 @@
 """DocuMind — Streamlit entry point."""
 
+import time
+
 import streamlit as st
 
 from app.auth import User, authenticate, register_user
@@ -14,6 +16,8 @@ from app.qa.history import ConversationHistory
 setup_logging()
 
 st.set_page_config(page_title="DocuMind", page_icon="📄", layout="centered")
+
+MIN_SECONDS_BETWEEN_QUESTIONS = 2
 
 CUSTOM_CSS = """
 <style>
@@ -186,6 +190,12 @@ def _main_app(user: User) -> None:
 
     question = st.chat_input("Ask a question about your documents...")
     if question:
+        last_asked = st.session_state.get("last_question_time", 0)
+        if time.time() - last_asked < MIN_SECONDS_BETWEEN_QUESTIONS:
+            st.warning("Please wait a moment before asking another question.")
+            return
+        st.session_state.last_question_time = time.time()
+
         st.session_state.messages.append({"role": "user", "content": question})
         with st.chat_message("user"):
             st.write(question)
