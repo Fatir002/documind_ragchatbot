@@ -8,6 +8,7 @@ from langchain_groq import ChatGroq
 
 from app.config import get_settings
 from app.exceptions import LLMServiceError
+from app.qa.history import ConversationHistory
 from app.retrieval.hybrid_search import hybrid_search
 from app.retrieval.vector_search import RetrievedChunk
 
@@ -25,6 +26,18 @@ numbered context entries below.
 
 Context:
 {context}"""
+
+REWRITE_PROMPT = """Given the conversation history and a follow-up question, rewrite the \
+follow-up into a standalone question that makes sense without the history. If the \
+follow-up question is already standalone, return it unchanged. Reply with ONLY the \
+rewritten question, nothing else.
+
+Conversation history:
+{history}
+
+Follow-up question: {question}
+
+Standalone question:"""
 
 
 @dataclass
@@ -48,18 +61,33 @@ def _format_context(chunks: list[RetrievedChunk]) -> str:
     return "\n\n".join(parts)
 
 
-def answer_question(question: str) -> Answer:
+def _standalone_question(question: str, history: ConversationHistory, llm: ChatGroq) -> str:
+    """Rewrite a follow-up question so it can be searched on its own."""
+    if not history.turns:
+        return question
+    prompt = REWRITE_PROMPT.format(history=history.as_text(), question=question)
+    try:
+        response = llm.invoke([HumanMessage(content=prompt)])
+    except Exception as exc:
+        logger.warning("query rewrite failed, using original question", extra={"error": str(exc)})
+        return question
+    return response.content.strip()
+
+
+def answer_question(question: str, history: ConversationHistory | None = None) -> Answer:
     """Retrieve relevant chunks and ask the LLM to answer using only them."""
-    chunks = hybrid_search(question, limit=5)
+    history = history or ConversationHistory()
+    settings = get_settings()
+    llm = ChatGroq(model=settings.groq_model, api_key=settings.groq_api_key, temperature=0)
+
+    search_query = _standalone_question(question, history, llm)
+    chunks = hybrid_search(search_query, limit=5)
 
     if not chunks:
         return Answer(
             text="I don't have any documents to search yet. Please upload one first.",
             sources=[],
         )
-
-    settings = get_settings()
-    llm = ChatGroq(model=settings.groq_model, api_key=settings.groq_api_key, temperature=0)
 
     prompt = SYSTEM_PROMPT.format(context=_format_context(chunks))
     try:
@@ -70,6 +98,10 @@ def answer_question(question: str) -> Answer:
 
     logger.info(
         "question answered",
-        extra={"question_length": len(question), "chunks_used": len(chunks)},
+        extra={
+            "question_length": len(question),
+            "search_query": search_query,
+            "chunks_used": len(chunks),
+        },
     )
     return Answer(text=response.content, sources=chunks)
