@@ -69,6 +69,7 @@ PostgreSQL + pgvector           Groq (LLM)
 
 ## Project Structure
 
+\`\`\`
 documind/
 ├── app/
 │   ├── config.py            # environment-based settings (pydantic-settings)
@@ -88,8 +89,7 @@ documind/
 ├── app_ui.py                  # Streamlit entry point
 ├── Dockerfile
 └── requirements.txt
-
----
+\`\`\`
 
 ## Setup
 
