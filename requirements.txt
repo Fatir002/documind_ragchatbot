@@ -7,5 +7,6 @@ pydantic-settings>=2.4
 streamlit>=1.38
 bcrypt>=4.2
 pypdf>=5.0
+transformers<4.56
 langchain-huggingface>=0.1
 sentence-transformers>=3.0
