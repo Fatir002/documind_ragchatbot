@@ -24,6 +24,7 @@ Built as a portfolio project demonstrating the core skills expected of a junior 
 
 ## Architecture
 
+```
 Streamlit UI (login · chat · admin upload)
         │
 Service layer (auth · ingestion · retrieval · Q&A chain)
@@ -32,6 +33,7 @@ LangChain (splitting · embeddings · retrieval · prompting)
    │                              │
 PostgreSQL + pgvector           Groq (LLM)
 (users, documents, chunks)
+```
 
 **Retrieval flow:** a question is optionally rewritten using conversation history → embedded and searched by both vector similarity (pgvector, HNSW index) and keyword full-text search (PostgreSQL `tsvector`) → both ranked lists are merged with Reciprocal Rank Fusion → top chunks are passed to the LLM with a strict "answer only from context" system prompt.
 
@@ -69,27 +71,29 @@ PostgreSQL + pgvector           Groq (LLM)
 
 ## Project Structure
 
-\`\`\`
+```
 documind/
 ├── app/
-│   ├── config.py            # environment-based settings (pydantic-settings)
-│   ├── logging_config.py    # structured JSON logging
-│   ├── exceptions.py        # custom exceptions with user-facing messages
-│   ├── db.py                # PostgreSQL connection pool
-│   ├── migrate.py           # SQL migration runner
-│   ├── auth.py               # registration & login (bcrypt)
-│   ├── embeddings.py         # embedding model loader
-│   ├── ingestion/            # loaders, splitter, storage
-│   ├── retrieval/            # vector search, keyword search, hybrid (RRF)
-│   └── qa/                   # Q&A chain, conversation history
-├── migrations/                # numbered SQL migration files
-├── scripts/                   # manual test/debug scripts
-├── tests/                     # pytest unit tests
-├── .github/workflows/ci.yml   # lint + test on every push
-├── app_ui.py                  # Streamlit entry point
+│   ├── config.py             # environment-based settings (pydantic-settings)
+│   ├── logging_config.py     # structured JSON logging
+│   ├── exceptions.py         # custom exceptions with user-facing messages
+│   ├── db.py                 # PostgreSQL connection pool
+│   ├── migrate.py            # SQL migration runner
+│   ├── auth.py                # registration & login (bcrypt)
+│   ├── embeddings.py          # embedding model loader
+│   ├── ingestion/             # loaders, splitter, storage
+│   ├── retrieval/             # vector search, keyword search, hybrid (RRF)
+│   └── qa/                    # Q&A chain, conversation history
+├── migrations/                 # numbered SQL migration files
+├── scripts/                    # manual test/debug scripts
+├── tests/                      # pytest unit tests
+├── .github/workflows/ci.yml    # lint + test on every push
+├── app_ui.py                   # Streamlit entry point
 ├── Dockerfile
 └── requirements.txt
-\`\`\`
+```
+
+---
 
 ## Setup
 
@@ -102,6 +106,7 @@ documind/
 
 ### 1. Clone and set up a virtual environment
 
+```bash
 git clone https://github.com/Fatir002/documind_ragchatbot.git
 cd documind_ragchatbot
 python -m venv .venv
@@ -109,28 +114,36 @@ python -m venv .venv
 .venv\Scripts\activate
 # macOS/Linux:
 source .venv/bin/activate
+```
 
 ### 2. Install dependencies
 
+```bash
 pip install -r requirements-dev.txt
+```
 
 ### 3. Set up the database
 
 Create a database and a limited application role (adjust names/password as you like):
 
+```sql
 CREATE DATABASE rag_db;
 CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE ROLE documind_app WITH LOGIN PASSWORD 'your-password';
 GRANT CONNECT ON DATABASE rag_db TO documind_app;
 GRANT USAGE, CREATE ON SCHEMA public TO documind_app;
+```
 
 ### 4. Configure environment variables
 
+```bash
 cp .env.example .env
+```
 
 Edit `.env` with your real values:
 
+```
 POSTGRES_USER=documind_app
 POSTGRES_PASSWORD=your-password
 POSTGRES_DB=rag_db
@@ -140,25 +153,34 @@ POSTGRES_PORT=5432
 GROQ_API_KEY=your-groq-key
 GROQ_MODEL=openai/gpt-oss-120b
 LOG_LEVEL=INFO
+```
 
 ### 5. Run database migrations
 
+```bash
 python -m app.migrate
+```
 
 ### 6. Launch the app
 
+```bash
 streamlit run app_ui.py
+```
 
 Open `http://localhost:8501`, register an account, and start chatting. Register a second account and promote it to `admin` manually in the database to enable document uploads:
 
+```sql
 UPDATE users SET role = 'admin' WHERE username = 'your-username';
+```
 
 ---
 
 ## Running with Docker
 
+```bash
 docker build -t documind .
 docker run -p 8501:8501 --env-file .env -e POSTGRES_HOST=host.docker.internal documind
+```
 
 > **Note:** `POSTGRES_HOST=host.docker.internal` lets the container reach a PostgreSQL instance running on your host machine. If your database is hosted elsewhere (e.g. a managed cloud Postgres), set `POSTGRES_HOST` to that instead.
 >
@@ -168,12 +190,16 @@ docker run -p 8501:8501 --env-file .env -e POSTGRES_HOST=host.docker.internal do
 
 ## Testing
 
+```bash
 pytest -v
+```
 
 Unit tests cover exception handling, conversation history, and input validation logic — components that don't require a live database or API connection. Linting and formatting are enforced via Ruff and checked automatically in CI on every push.
 
+```bash
 ruff check .
 ruff format --check .
+```
 
 ---
 
